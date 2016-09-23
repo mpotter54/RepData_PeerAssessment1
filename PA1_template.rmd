@@ -1,0 +1,135 @@
+---
+title: "ReproducibleResearchPeer1"
+author: "MSP"
+date: "September 23, 2016"
+output: html_document
+---
+
+## Setup
+
+```{r setup, include=FALSE}
+        knitr::opts_chunk$set(echo = TRUE, fig.width=12, fig.height=8, fig.path='Figs/')
+        library(data.table)
+        library(ggplot2)
+        library(dplyr)
+```
+
+## Load and preprocess the data
+
+```{r Read Data}
+        # set global project directory
+        mainDir <- "C:/ReproducibleResearchPeer1"
+        filename <- "activity.csv"
+        setwd(mainDir)
+        amd <- read.csv(file=filename, head=TRUE, sep=",")
+```
+
+## What is mean total number of steps taken per day?
+
+```{r Calculate Total Steps, echo=FALSE}
+        # calculate mean steps per day
+        setDT(amd)[, TotalStepsDay := sum(steps, na.rm = TRUE), by = date]
+        # calculate bins
+        b<-length(unique(amd$date))
+        # plot total steps per day
+        qplot(amd$TotalStepsDay, 
+              geom="histogram",
+              bins=b,
+              main = "Total Steps Per Day", 
+              xlab = "Total Steps",  
+              fill=I("blue"), 
+              col=I("red"))
+```
+
+## Mean total number of steps taken per day
+
+```{r Calculate Total Steps mean, echo=FALSE}
+        mean(amd$TotalStepsDay)
+```
+
+## Median total number of steps taken per day
+
+```{r Calculate Total Steps median, echo=FALSE}
+        median(amd$TotalStepsDay)
+```
+
+## What is the average daily activity pattern?
+
+```{r Plot steps average, echo=FALSE}
+        # calculate mean steps per interval across all days
+        setDT(amd)[, AvgStepsInterval := mean(steps, na.rm = TRUE), by = interval]
+        # plot mean steps per interval across all days
+        ggplot(amd, 
+          aes(interval, AvgStepsInterval)) + 
+          geom_line() +
+          xlab("Interval") + 
+          ylab("Avg Steps")
+```
+
+## Max Interval Value
+
+```{r Max interval, echo=FALSE}
+        # show max interval
+        amd[which.max(amd$AvgSteps),]$interval
+```
+
+## Impute missing values
+
+```{r Missing Values, echo=FALSE}
+        # impute missing steps using average for interval
+        amd2 <- amd %>% mutate(isteps = ifelse(is.na(steps),as.integer(round(AvgStepsInterval,digits=0)),steps))
+        # calculate mean steps per day
+        setDT(amd2)[, ITotalStepsDay := sum(isteps), by = date]
+        # calculate bins
+        b<-length(unique(amd2$date))
+        # plot total steps per day
+        qplot(amd2$ITotalStepsDay, 
+              geom="histogram",
+              bins=b,
+              main = "Total Steps Per Day Imputed", 
+              xlab = "Total Steps Imputed",  
+              fill=I("blue"), 
+              col=I("red"))
+```
+
+## Rows with missing values
+
+```{r Missing Values Rows, echo=FALSE}
+        # show numbers of rows with missing values for steps
+        sum(is.na(amd$steps))
+```
+
+## Mean total number of steps taken per day with missing values imputed
+
+```{r With Missing Values Mean, echo=FALSE}
+        mean(amd2$ITotalStepsDay)
+```
+
+## Median total number of steps taken per day with missing values imputed
+
+```{r With Missing Values Median, echo=FALSE}
+        median(amd2$ITotalStepsDay)
+```
+
+## Weekdays versus weekends
+
+```{r Weekdays and Weekends, echo=FALSE}
+        amd3 <- amd2 %>% mutate(DayType = as.factor(
+                ifelse(weekdays(as.Date(as.character(amd2$date))) %in% c('Sunday','Saturday'),"weekend","weekday")))
+        # calculate mean steps per interval across Weekends or WeekDays
+        setDT(amd3)[amd3$DayType %in% c('weekend'), AvgStepsWeeks := mean(isteps), by = interval]
+        setDT(amd3)[amd3$DayType %in% c('weekday'), AvgStepsWeeks := mean(isteps), by = interval]
+        par(mfrow=c(2,1)) 
+        ggplot(amd3[amd3$DayType %in% c('weekend'),], 
+          aes(interval, AvgStepsWeeks)) + 
+          ggtitle("Weekend") +
+          geom_line() +
+          xlab("Interval") + 
+          ylab("Number of Steps")
+        ggplot(amd3[amd3$DayType %in% c('weekday'),], 
+          aes(interval, AvgStepsWeeks)) + 
+          ggtitle("Weekday") +
+          geom_line() +
+          xlab("Interval") + 
+          ylab("Number of Steps")
+```
